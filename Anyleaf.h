@@ -9,6 +9,7 @@
 
 #include <Adafruit_ADS1015.h>
 #include <SimpleKalmanFilter.h>
+#include <Adafruit_MAX31865.h>
 // #include <tuple>
 // #include "optional.hpp"
 // using nonstd::nullopt;
@@ -36,6 +37,14 @@ public:
     CalPtOrp(float V_, float ORP_);
     float V; // voltage, in Volts
     float OrP;
+};
+
+struct CalPtT {
+public:
+    CalPtT();
+    CalPtT(float, float T_);
+    float V; // voltage, in Volts
+    float T; // in Celsius
 };
 
 enum class CalSlot {
@@ -91,6 +100,19 @@ private:
     Adafruit_ADS1115 adc;
     float last_meas;
     CalPtOrp cal;
+};
+
+class Rtd {
+public:
+    Rtd(int cs, int wire);
+
+    float read();
+    void calibrate();
+
+
+private:
+    Adafruit_MAX31856 sensor;
+    CalPtT cal;
 };
 
 float voltage_from_adc(int16_t digi);

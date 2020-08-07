@@ -10,6 +10,7 @@ Driver for the Anyleaf pH module
 
 #include <Adafruit_ADS1015.h>
 #include <SimpleKalmanFilter.h>
+#include <Adafruit_MAX31865.h>
 #include "Anyleaf.h"
 
 // These language features would improve code readability, and API
@@ -310,6 +311,23 @@ void OrpSensor::calibrate_all(CalPtOrp pt) {
 
 void OrpSensor::reset_calibration() {
     this->cal = CalPtOrp(0.4, 400.);
+}
+
+Rtd::Rtd(int cs, int wire) { // todo find type of wire, or create custom enum
+    // We assume hardware spi
+    Adafruit_MAX31865 sensor_ = Adafruit_MAX31856(cs);
+//    sensor_.begin(MAX31865_3WIRE);
+    sensor_.begin(wire);
+
+    this->sensor  = sensor_;
+}
+
+float Rtd::read() {
+    return this->sensor.readRTD();
+}
+
+void Rtd::calibrate() {
+
 }
 
 float voltage_from_adc(int16_t digi) {
