@@ -313,21 +313,55 @@ void OrpSensor::reset_calibration() {
     this->cal = CalPtOrp(0.4, 400.);
 }
 
-Rtd::Rtd(int cs, int wire) { // todo find type of wire, or create custom enum
+Rtd::Rtd(int cs, RtdType type_, RtdWires wires_) {
     // We assume hardware spi
-    Adafruit_MAX31865 sensor_ = Adafruit_MAX31856(cs);
+    Adafruit_MAX31865 sensor_ = Adafruit_MAX31865(cs);
 //    sensor_.begin(MAX31865_3WIRE);
-    sensor_.begin(wire);
+
+    switch (wires_) {
+        case RtdWires::Two:
+            sensor_.begin(MAX31865_2WIRE);
+        case RtdWires::Three:
+            sensor_.begin(MAX31865_3WIRE);
+        case RtdWires::Four:
+            sensor_.begin(MAX31865_4WIRE);
+        default:
+            break;
 
     this->sensor  = sensor_;
+    this->type = type_;
+    this->wires  = wires_;
 }
 
 float Rtd::read() {
-    return this->sensor.temperature(100, 300);
+    switch (this->type) {
+        case RtdType::Pt100:
+            return this->sensor.temperature(100, 300);
+        case RtdType::Pt1000:
+            return this->sensor.temperature(1000, 3000);
+        default:
+            break;
+
+}
+
+float Rtd:read_resistance() {
+    uint16_t rtd = this->sensor.readRTD();
+    float ratio = rtd;
+    ratio /= 32768;
+
+    switch (this->type) {
+        case RtdType::Pt100:
+            return 300 * ratio,8;
+        case RtdType::Pt1000:
+            return 3000 * ratio,8;
+        default:
+            break;
+
+
 }
 
 void Rtd::calibrate() {
-
+    // todo
 }
 
 float voltage_from_adc(int16_t digi) {
@@ -335,7 +369,7 @@ float voltage_from_adc(int16_t digi) {
     // Input ranges from +- 2.048V; this is configurable.
     // Output ranges from -32_768 to +32_767.
     float vref = 2.048;
-    return ((float) digi / 32767.) * vref;
+    return ((float) digi / 32768.) * vref;
 }
 
 // std::<tuple> appears not to be avail for arduino.

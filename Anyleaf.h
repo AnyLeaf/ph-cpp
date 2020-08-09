@@ -102,16 +102,30 @@ private:
     CalPtOrp cal;
 };
 
+enum class RtdType {
+    Pt100,
+    Pt1000,
+};
+
+enum class RtdWires {
+    Two,
+    Three,
+    Four,
+};
+
 class Rtd {
 public:
-    Rtd(int cs, int wire);
+    Rtd(int cs, int type_, int wires_);
 
     float read();
+    float read_resistance();
     void calibrate();
 
 
 private:
-    Adafruit_MAX31856 sensor;
+    Adafruit_MAX31865 sensor;
+    int type;
+    int wires;
     CalPtT cal;
 };
 
