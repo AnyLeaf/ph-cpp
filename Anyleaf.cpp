@@ -323,7 +323,7 @@ Rtd::Rtd(int cs, int wire) { // todo find type of wire, or create custom enum
 }
 
 float Rtd::read() {
-    return this->sensor.readRTD();
+    return this->sensor.temperature(100, 300);
 }
 
 void Rtd::calibrate() {
