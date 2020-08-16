@@ -1,6 +1,6 @@
 # Anyleaf
 
-## For use with the AnyLeaf pH sensor in C++, or Arduino
+## For use with the AnyLeaf pH and RTD sensors in C++, or Arduino
 [Homepage](https://anyleaf.org)
 
 To install using Arduino IDE, go to `Sketch` menu → `Include Library` → `Manage Libraries` →
