@@ -271,19 +271,19 @@ float OrpSensor::read() {
         this->filter = SimpleKalmanFilter(e_mea_orp, e_est_orp, q_orp);  // reset the filter
     }
 
-    return this->filter.updateEstimate(pH);
+    return this->filter.updateEstimate(ORP);
 }
 
 // Take an ORP reading, without using the Kalman filter
 float OrpSensor::read_raw() {
-        float ORP = orp_from_voltage(
-            voltage_from_adc(this->adc.readADC_Differential_0_1()),
-            cal,
-        );
+    float ORP = orp_from_voltage(
+        voltage_from_adc(this->adc.readADC_Differential_0_1()),
+        this->cal
+    );
 
-        this->last_meas = ORP;
+    this->last_meas = ORP;
 
-        return ORP;
+    return ORP;
 }
 
 // Useful for getting calibration data
@@ -298,9 +298,9 @@ float OrpSensor::read_temp() {
 
 // Calibrate by measuring voltage and temp at a given ORP. Set the
 // calibration, and return Voltage.
-Twople Orp::calibrate(float ORP) {
+float OrpSensor::calibrate(float ORP) {
     float V = voltage_from_adc(this->adc.readADC_Differential_0_1());
-    this->cal = CalPt(V, ORP);
+    this->cal = CalPtOrp(V, ORP);
 
     return V;
 }
@@ -313,10 +313,20 @@ void OrpSensor::reset_calibration() {
     this->cal = CalPtOrp(0.4, 400.);
 }
 
-Rtd::Rtd(int cs, RtdType type_, RtdWires wires_) {
-    // We assume hardware spi
+Rtd::Rtd() :
+    sensor(10)
+{
+
+    this->sensor = Adafruit_MAX31865(10);
+    this->type = RtdType::Pt100;
+    this->wires  = RtdWires::Three;
+}
+
+
+Rtd::Rtd(uint8_t cs, RtdType type_, RtdWires wires_) :
+    sensor(cs)
+{
     Adafruit_MAX31865 sensor_ = Adafruit_MAX31865(cs);
-//    sensor_.begin(MAX31865_3WIRE);
 
     switch (wires_) {
         case RtdWires::Two:
@@ -327,8 +337,9 @@ Rtd::Rtd(int cs, RtdType type_, RtdWires wires_) {
             sensor_.begin(MAX31865_4WIRE);
         default:
             break;
+    }
 
-    this->sensor  = sensor_;
+    this->sensor = sensor_;
     this->type = type_;
     this->wires  = wires_;
 }
@@ -341,10 +352,10 @@ float Rtd::read() {
             return this->sensor.temperature(1000, 3000);
         default:
             break;
-
+    }
 }
 
-float Rtd:read_resistance() {
+float Rtd::read_resistance() {
     uint16_t rtd = this->sensor.readRTD();
     float ratio = rtd;
     ratio /= 32768;
@@ -356,8 +367,7 @@ float Rtd:read_resistance() {
             return 3000 * ratio,8;
         default:
             break;
-
-
+    }
 }
 
 void Rtd::calibrate() {

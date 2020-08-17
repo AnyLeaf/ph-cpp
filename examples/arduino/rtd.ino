@@ -8,7 +8,7 @@ void setup(void) {
     // The first argument is the pin connected to the `CS` pin of the module. It can be any
     // digital GPIO pin.
     sensor = Rtd(10, RtdType::Pt100, RtdWires::Three);  // 3-wire Pt100
-    // Rtd sensor = Rtd(10, RtdType::Pt1000, RtdWires::Two);  // 2-wire Pt1000
+    // sensor = Rtd(10, RtdType::Pt1000, RtdWires::Two);  // 2-wire Pt1000
 }
 
 void loop(void) {

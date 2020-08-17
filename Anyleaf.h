@@ -36,16 +36,16 @@ public:
     CalPtOrp();
     CalPtOrp(float V_, float ORP_);
     float V; // voltage, in Volts
-    float OrP;
+    float ORP;
 };
 
-struct CalPtT {
-public:
-    CalPtT();
-    CalPtT(float, float T_);
-    float V; // voltage, in Volts
-    float T; // in Celsius
-};
+// struct CalPtT {
+// public:
+//     CalPtT();
+//     CalPtT(float, float T_);
+//     float V; // voltage, in Volts
+//     float T; // in Celsius
+// };
 
 enum class CalSlot {
     // Keeps our calibration organized, so we track when to overwrite.
@@ -115,18 +115,18 @@ enum class RtdWires {
 
 class Rtd {
 public:
-    Rtd(int cs, int type_, int wires_);
+    Rtd();
+    Rtd(uint8_t cs, RtdType type_, RtdWires wires_);
 
     float read();
     float read_resistance();
     void calibrate();
 
-
 private:
     Adafruit_MAX31865 sensor;
-    int type;
-    int wires;
-    CalPtT cal;
+    RtdType type;
+    RtdWires wires;
+    // CalPtT cal;
 };
 
 float voltage_from_adc(int16_t digi);
