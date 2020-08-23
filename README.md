@@ -52,5 +52,7 @@ void loop(void) {
 If the above code isn't suitable for your microcontroller, the key takeaway
  is that the module's digital output comes from
 a [Texas Instruments ADS1115](http://www.ti.com/lit/ds/symlink/ads1114.pdf)
-ADC, addressed on I²C port `0x48`. The pH voltage is mapped to a differential
-from inputs `A0` and `A1`, and temperature voltage is from input `A2`.
+ADC, addressed on I²C port `0x48` or `0x49`. The pH or ORP voltage is mapped to a 
+differential
+from inputs `A0` and `A1`. The onboard temperature voltage is from input `A2`.
+The `RTD` uses a `max31865` chip.
