@@ -6,6 +6,12 @@
 To install using Arduino IDE, go to `Sketch` menu → `Include Library` → `Manage Libraries` →
 search for `anyleaf` → select and click `Install`.
 
+### Install Depdendencies
+
+* [Adafruit ADS1X15](https://github.com/adafruit/Adafruit_ADS1X15)
+* [SimpleKalmanFilter](https://github.com/denyssene/SimpleKalmanFilter)
+* [Adafruit MAX31865](https://github.com/adafruit/Adafruit_MAX31865)
+
 ### Example for Arduino:
 ```c++
 #include <Anyleaf.h>
