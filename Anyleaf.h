@@ -39,13 +39,14 @@ public:
     float ORP;
 };
 
-// struct CalPtT {
-// public:
-//     CalPtT();
-//     CalPtT(float, float T_);
-//     float V; // voltage, in Volts
-//     float T; // in Celsius
-// };
+struct CalPtEc {  // todo: Currently unused
+public:
+    CalPtEc();
+    CalPtEc(float reading_, float ec_, float T_);
+    float reading; // Raw conductivity in uS/cm
+    float ec;  // calibrated conductivity
+    float T; // Temp in C
+};
 
 enum class CalSlot {
     // Keeps our calibration organized, so we track when to overwrite.
@@ -57,10 +58,7 @@ enum class CalSlot {
 class PhSensor {
 public:
     PhSensor();
-
     SimpleKalmanFilter filter;
-    // void predict();
-    // void update();
     float read();
     float read(float t);
     float read_raw();
@@ -86,8 +84,6 @@ public:
     OrpSensor();
 
     SimpleKalmanFilter filter;
-    // void predict();
-    // void update();
     float read();
     float read_raw();
     float read_voltage();
@@ -100,6 +96,34 @@ private:
     Adafruit_ADS1115 adc;
     float last_meas;
     CalPtOrp cal;
+};
+
+enum class CellConstant {
+    K0_01,
+    K0_1,
+    K1_0,
+    K10,
+};
+
+enum class ExcMode {
+    ReadingsOnly,
+    AlwaysOn,
+};
+
+class EcSensor {
+public:
+    EcSensor(float K_);
+
+    CellConstant K;
+    ExcMode excitation_mode;
+    float read();
+    float read_temp();
+    void set_excitation_mode(ExcMode mode);
+    void set_K(CellConstant K);
+
+private:
+//    Serial ser; // todo maybe
+//    CalPtEc cal; // todo
 };
 
 enum class RtdType {

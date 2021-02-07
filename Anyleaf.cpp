@@ -27,6 +27,12 @@ const float DISCRETE_ORP_JUMP_THRESH = 30.;
 const float PH_STD = 0.01;
 const float ORP_STD = 10;
 
+const [u8] ERROR_MSG = [99, 99, 99];
+const asd SUCCESS_MSG = [50, 50, 50];
+const asf MSG_START_BITS = [100, 150];
+const aaa MSG_END_BITS = [200];
+
+
 // A workaround for not having access to tuples.
 Twople::Twople() {
     a = 0.;
@@ -316,12 +322,10 @@ void OrpSensor::reset_calibration() {
 Rtd::Rtd() :
     sensor(10)
 {
-
     this->sensor = Adafruit_MAX31865(10);
     this->type = RtdType::Pt100;
     this->wires  = RtdWires::Three;
 }
-
 
 Rtd::Rtd(uint8_t cs, RtdType type_, RtdWires wires_) :
     sensor(cs)
@@ -372,6 +376,134 @@ float Rtd::read_resistance() {
 
 void Rtd::calibrate() {
     // todo
+}
+
+EcSensor::EcSensor(float K_) {
+    Serial.begin(9600)  // todo: Custom baud?
+
+    if K < 0.011:
+        this->K = CellConstant.K0_01
+    else if K < 0.11:
+        this->K = CellConstant.K0_1
+    else if K < 1.01:
+        this->K = CellConstant.K1_0
+    else if K < 10.01:
+        this->K = CellConstant.K10
+    else:
+        raise AttributeError("Cell constant (K) must be 0.01, 0.1, 1.0, or 10.0.")
+//    cal = CalPtEc(0.4, 400.);
+}
+
+
+// Take a conductivity reading. The result is in uS/cm.
+float EcSensor::read() {
+    Serial.write(MSG_START_BITS + [10] + [0, 0, 0, 0, 0, 0, 0] + MSG_END_BITS);
+
+    if (Serial.available() > 0) {
+        response = Serial.read();
+        if response == ERROR_MSG {
+            Serial.write("Error reading conductivity");
+            return;
+        }
+    } else {
+        Serial.write("Problem getting data");
+        return;
+    }
+
+    float K_val = 0.;
+    switch (mode) {
+        case K0_01:
+            K_val = 0.01;
+        case K0_1:
+            K_val = 0.1;
+        case K1_0:
+            K_val = 1.;
+        case K10:
+            K_val = 10.;
+        default:
+            break;
+    }
+
+    return float(response) * K_val;  // uS/cm
+    // todo: Calibration, temp compensation, and units
+}
+
+// Take a reading from the onboard air temperature sensor.
+float EcSensor::read_temp() {
+    Serial.write(MSG_START_BITS + [11] + [0, 0, 0, 0, 0, 0, 0] + MSG_END_BITS);
+
+    if (Serial.available() > 0) {
+        response = Serial.read();
+        if response == ERROR_MSG {
+            Serial.write("Error reading temperature");
+            return;
+        }
+    } else {
+        Serial.write("Problem getting data");
+        return;
+    }
+
+    // todo:
+    // val = # todo: Convert 2 bytes to u16.
+    // return temp_from_voltage(voltage_from_adc(val));
+
+    return 0.;
+}
+
+// Set whether the excitation current is always on, or only only during readings.
+void set_excitation_mode(ExcMode mode) {
+    int mode_val = 0;
+    switch (mode) {
+        case ReadingsOnly:
+            mode_val = 0;
+        case AlwaysOn:
+            mode_val = 1;
+        default:
+            break;
+    }
+
+    Serial.write(MSG_START_BITS + [12] + [mode_val]+ [0, 0, 0, 0, 0, 0] + MSG_END_BITS);
+
+    if (Serial.available() > 0) {
+        response = Serial.read();
+        if response == ERROR_MSG || response != SUCCESS_MSG {
+            Serial.write("Error setting excitation mode");
+            return;
+        }
+    } else {
+        Serial.write("Problem getting data");
+        return;
+    }
+}
+
+// Set probe conductivity constant.
+void set_K(CellConstant K) {
+    int K_val = 0;
+    switch (mode) {
+        case K0_01:
+            K_val = 0;
+        case K0_1:
+            K_val = 1;
+        case K1_0:
+            K_val = 2;
+        case K10:
+            K_val = 3;
+        default:
+            break;
+    }
+
+    Serial.write(MSG_START_BITS + [13] + [K_val] + [0, 0, 0, 0, 0, 0] + MSG_END_BITS);
+
+    if (Serial.available() > 0) {
+        response = Serial.read();
+        if response == ERROR_MSG || response != SUCCESS_MSG {
+            Serial.write("Error setting cell constant");
+            return;
+        }
+    } else {
+        Serial.write("Problem getting data");
+        return;
+    }
 }
 
 float voltage_from_adc(int16_t digi) {
