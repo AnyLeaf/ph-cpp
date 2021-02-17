@@ -58,6 +58,10 @@ enum class CalSlot {
 class PhSensor {
 public:
     PhSensor();
+    static PhSensor new_alt_addr();  // named constructor
+    void cal_nitrate_default();
+    void cal_phosphate_default();
+    void cal_potassium_default();
     SimpleKalmanFilter filter;
     float read();
     float read(float t);
@@ -82,7 +86,7 @@ private:
 class OrpSensor {
 public:
     OrpSensor();
-
+    static OrpSensor new_alt_addr();  // named constructor
     SimpleKalmanFilter filter;
     float read();
     float read_raw();

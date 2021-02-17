@@ -27,10 +27,11 @@ const float DISCRETE_ORP_JUMP_THRESH = 30.;
 const float PH_STD = 0.01;
 const float ORP_STD = 10;
 
-const [u8] ERROR_MSG = [99, 99, 99];
-const asd SUCCESS_MSG = [50, 50, 50];
-const asf MSG_START_BITS = [100, 150];
-const aaa MSG_END_BITS = [200];
+const uint8_t MSG_SIZE_EC = 11;
+const uint8_t ERROR_MSG[3] = {99, 99, 99};
+const uint8_t SUCCESS_MSG[3] = {50, 50, 50};
+const uint8_t MSG_START_BITS[2] = {100, 150};
+const uint8_t MSG_END_BITS[1] = {200};
 
 
 // A workaround for not having access to tuples.
@@ -93,7 +94,39 @@ PhSensor::PhSensor():
     cal_2 = CalPt(0.17, 4., 23.);
     cal_3 = CalPt(0., 0., 0.);  // There's got to be a better way
     // cal_3 = nullptr;
-    // cal_3 = nullopt;
+}
+
+// Create a new sensor with an ADC I2C address of 0x49.
+inline PhSensor PhSensor::new_alt_addr() {
+    PhSensor result = PhSensor();
+
+    Adafruit_ADS1115 ads1115(0x49);
+    ads1115.setGain(GAIN_TWO);
+    ads1115.begin();
+    result.adc = ads1115;
+
+    return result;
+}
+
+// Set calibration to a sensible default for nitrate, with unit mg/L.
+void PhSensor::cal_nitrate_default() {
+    this->cal_1 = CalPt(0.25, -2. * 62000., 23.);
+    this->cal_2 = CalPt(0.4, -5 * 62000., 23.);
+    this->cal_3 = CalPt(0., 0., 0.);  // There's got to be a better way
+}
+
+// Set calibration to a sensible default for phosphate, with unit mg/L.
+void PhSensor::cal_phosphate_default() {
+    this->cal_1 = CalPt(0.25, -2. * 62000., 23.);
+    this->cal_2 = CalPt(0.4, -5 * 62000., 23.);
+    this->cal_3 = CalPt(0., 0., 0.);  // There's got to be a better way
+}
+
+// Set calibration to a sensible default for potassium, with unit mg/L.
+void PhSensor::cal_potassium_default() {
+    this->cal_1 = CalPt(0.25, -2. * 62000., 23.);
+    this->cal_2 = CalPt(0.4, -5 * 62000., 23.);
+    this->cal_3 = CalPt(0., 0., 0.);  // There's got to be a better way
 }
 
 // Take a pH reading, using the Kalman filter. This reduces sensor
@@ -268,6 +301,18 @@ OrpSensor::OrpSensor():
     cal = CalPtOrp(0.4, 400.);
 }
 
+// Create a new sensor with an ADC I2C address of 0x49.
+inline OrpSensor OrpSensor::new_alt_addr() {
+    OrpSensor result = OrpSensor();
+
+    Adafruit_ADS1115 ads1115(0x49);
+    ads1115.setGain(GAIN_TWO);
+    ads1115.begin();
+    result.adc = ads1115;
+
+    return result;
+}
+
 // Take an ORP reading, using the Kalman filter. This reduces sensor
 // noise, and provides a more accurate reading.
 float OrpSensor::read() {
@@ -379,29 +424,29 @@ void Rtd::calibrate() {
 }
 
 EcSensor::EcSensor(float K_) {
-    Serial.begin(9600)  // todo: Custom baud?
+    Serial.begin(9600);  // todo: Custom baud?
 
-    if K < 0.011:
-        this->K = CellConstant.K0_01
-    else if K < 0.11:
-        this->K = CellConstant.K0_1
-    else if K < 1.01:
-        this->K = CellConstant.K1_0
-    else if K < 10.01:
-        this->K = CellConstant.K10
-    else:
-        raise AttributeError("Cell constant (K) must be 0.01, 0.1, 1.0, or 10.0.")
-//    cal = CalPtEc(0.4, 400.);
+    if (K_ < 0.011) {
+        this->K = CellConstant::K0_01;
+    } else if (K_ < 0.11) {
+        this->K = CellConstant::K0_1;
+    } else if (K_ < 1.01) {
+        this->K = CellConstant::K1_0;
+    } else if (K_ < 10.01) {
+        this->K = CellConstant::K10;
+    } else {}  // todo: How do we handle errors like this in C++?
 }
 
 
 // Take a conductivity reading. The result is in uS/cm.
 float EcSensor::read() {
-    Serial.write(MSG_START_BITS + [10] + [0, 0, 0, 0, 0, 0, 0] + MSG_END_BITS);
+    // Serial.write(MSG_START_BITS + {10} + {0, 0, 0, 0, 0, 0, 0} + MSG_END_BITS);
+    // todo: Trouble finding clean way to concat
+    Serial.write({100, 150, 10, 0, 0, 0, 0, 0, 0, 0, 200});
 
     if (Serial.available() > 0) {
-        response = Serial.read();
-        if response == ERROR_MSG {
+        uint8_t response[MSG_SIZE_EC] = Serial.read();
+        if (response == ERROR_MSG) {
             Serial.write("Error reading conductivity");
             return;
         }
@@ -430,11 +475,13 @@ float EcSensor::read() {
 
 // Take a reading from the onboard air temperature sensor.
 float EcSensor::read_temp() {
-    Serial.write(MSG_START_BITS + [11] + [0, 0, 0, 0, 0, 0, 0] + MSG_END_BITS);
+    // Serial.write(MSG_START_BITS + {11} + {0, 0, 0, 0, 0, 0, 0} + MSG_END_BITS);
+    // todo: Trouble finding clean way to concat
+    Serial.write({100, 150, 11, 0, 0, 0, 0, 0, 0, 0, 200});
 
     if (Serial.available() > 0) {
-        response = Serial.read();
-        if response == ERROR_MSG {
+        uint8_t response[MSG_SIZE_EC] = Serial.read();
+        if (response == ERROR_MSG) {
             Serial.write("Error reading temperature");
             return;
         }
@@ -454,19 +501,21 @@ float EcSensor::read_temp() {
 void set_excitation_mode(ExcMode mode) {
     int mode_val = 0;
     switch (mode) {
-        case ReadingsOnly:
+        case ExcMode::ReadingsOnly:
             mode_val = 0;
-        case AlwaysOn:
+        case ExcMode::AlwaysOn:
             mode_val = 1;
         default:
             break;
     }
 
-    Serial.write(MSG_START_BITS + [12] + [mode_val]+ [0, 0, 0, 0, 0, 0] + MSG_END_BITS);
+    // Serial.write(MSG_START_BITS + {12} + {mode_val} + {0, 0, 0, 0, 0, 0} + MSG_END_BITS);
+    // todo: Trouble finding clean way to concat
+    Serial.write({100, 150, 12, mode_val, 0, 0, 0, 0, 0, 0, 200});
 
     if (Serial.available() > 0) {
-        response = Serial.read();
-        if response == ERROR_MSG || response != SUCCESS_MSG {
+        uint8_t response[MSG_SIZE_EC] = Serial.read();
+        if (response == ERROR_MSG || response != SUCCESS_MSG) {
             Serial.write("Error setting excitation mode");
             return;
         }
@@ -492,11 +541,13 @@ void set_K(CellConstant K) {
             break;
     }
 
-    Serial.write(MSG_START_BITS + [13] + [K_val] + [0, 0, 0, 0, 0, 0] + MSG_END_BITS);
+    // Serial.write(MSG_START_BITS + {13} + {K_val} + {0, 0, 0, 0, 0, 0} + MSG_END_BITS);
+    // todo: Trouble finding clean way to concat
+    Serial.write({100, 150, 13, K_val, 0, 0, 0, 0, 0, 0, 200});
 
     if (Serial.available() > 0) {
-        response = Serial.read();
-        if response == ERROR_MSG || response != SUCCESS_MSG {
+        uint8_t response[MSG_SIZE_EC] = Serial.read();
+        if (response == ERROR_MSG || response != SUCCESS_MSG) {
             Serial.write("Error setting cell constant");
             return;
         }
