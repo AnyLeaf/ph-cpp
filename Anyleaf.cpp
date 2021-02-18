@@ -424,7 +424,8 @@ void Rtd::calibrate() {
 }
 
 EcSensor::EcSensor(float K_) {
-    Serial.begin(9600);  // todo: Custom baud?
+    Serial.begin(9600);  // Same baud as ec firmware.
+    // todo: parity bit, number of stop bits, and flow control?
 
     if (K_ < 0.011) {
         this->K = CellConstant::K0_01;
@@ -442,34 +443,38 @@ EcSensor::EcSensor(float K_) {
 float EcSensor::read() {
     // Serial.write(MSG_START_BITS + {10} + {0, 0, 0, 0, 0, 0, 0} + MSG_END_BITS);
     // todo: Trouble finding clean way to concat
-    Serial.write({100, 150, 10, 0, 0, 0, 0, 0, 0, 0, 200});
+    uint8_t msg[MSG_SIZE_EC] = {100, 150, 10, 0, 0, 0, 0, 0, 0, 0, 200};
+    Serial.write(msg, MSG_SIZE_EC);
+    
 
-    if (Serial.available() > 0) {
-        uint8_t response[MSG_SIZE_EC] = Serial.read();
+    uint8_t response[2];
+    if (Serial.available() > 0) {  // todo: Do we need/want the `> 0` part?
+        Serial.readBytes(response, 2);
         if (response == ERROR_MSG) {
             Serial.write("Error reading conductivity");
-            return;
+            return 0.;
         }
     } else {
         Serial.write("Problem getting data");
-        return;
+        return 0.;
     }
 
     float K_val = 0.;
-    switch (mode) {
-        case K0_01:
+    switch (this->K) {
+        case CellConstant::K0_01:
             K_val = 0.01;
-        case K0_1:
+        case CellConstant::K0_1:
             K_val = 0.1;
-        case K1_0:
+        case CellConstant::K1_0:
             K_val = 1.;
-        case K10:
+        case CellConstant::K10:
             K_val = 10.;
         default:
             break;
     }
 
-    return float(response) * K_val;  // uS/cm
+    uint16_t val = ((uint16_t)response[1] << 8) | response[0];
+    return float(val) * K_val;  // µS/cm
     // todo: Calibration, temp compensation, and units
 }
 
@@ -477,29 +482,29 @@ float EcSensor::read() {
 float EcSensor::read_temp() {
     // Serial.write(MSG_START_BITS + {11} + {0, 0, 0, 0, 0, 0, 0} + MSG_END_BITS);
     // todo: Trouble finding clean way to concat
-    Serial.write({100, 150, 11, 0, 0, 0, 0, 0, 0, 0, 200});
+    uint8_t msg[MSG_SIZE_EC] = {100, 150, 11, 0, 0, 0, 0, 0, 0, 0, 200};
+    Serial.write(msg, MSG_SIZE_EC);
 
+    uint8_t response[2];
     if (Serial.available() > 0) {
-        uint8_t response[MSG_SIZE_EC] = Serial.read();
+        Serial.readBytes(response, MSG_SIZE_EC);
         if (response == ERROR_MSG) {
             Serial.write("Error reading temperature");
-            return;
+            return 0.;
         }
     } else {
         Serial.write("Problem getting data");
-        return;
+        return 0.;
     }
 
-    // todo:
-    // val = # todo: Convert 2 bytes to u16.
-    // return temp_from_voltage(voltage_from_adc(val));
-
-    return 0.;
+    uint16_t val = ((uint16_t)response[0] << 8) | response[1];
+    uint16_t V = temp_from_voltage(voltage_from_adc(val));  // Temp sensor output voltage
+    return 100. * V - 60.;
 }
 
 // Set whether the excitation current is always on, or only only during readings.
 void set_excitation_mode(ExcMode mode) {
-    int mode_val = 0;
+    uint8_t mode_val = 0;
     switch (mode) {
         case ExcMode::ReadingsOnly:
             mode_val = 0;
@@ -511,10 +516,13 @@ void set_excitation_mode(ExcMode mode) {
 
     // Serial.write(MSG_START_BITS + {12} + {mode_val} + {0, 0, 0, 0, 0, 0} + MSG_END_BITS);
     // todo: Trouble finding clean way to concat
-    Serial.write({100, 150, 12, mode_val, 0, 0, 0, 0, 0, 0, 200});
+    uint8_t msg[MSG_SIZE_EC] = {100, 150, 12, mode_val, 0, 0, 0, 0, 0, 0, 200};
+    Serial.write(msg, MSG_SIZE_EC);
+    
 
+    uint8_t response[3];
     if (Serial.available() > 0) {
-        uint8_t response[MSG_SIZE_EC] = Serial.read();
+        Serial.readBytes(response, 3);
         if (response == ERROR_MSG || response != SUCCESS_MSG) {
             Serial.write("Error setting excitation mode");
             return;
@@ -527,15 +535,15 @@ void set_excitation_mode(ExcMode mode) {
 
 // Set probe conductivity constant.
 void set_K(CellConstant K) {
-    int K_val = 0;
-    switch (mode) {
-        case K0_01:
+    uint8_t K_val = 0;
+    switch (K) {
+        case CellConstant::K0_01:
             K_val = 0;
-        case K0_1:
+        case CellConstant::K0_1:
             K_val = 1;
-        case K1_0:
+        case CellConstant::K1_0:
             K_val = 2;
-        case K10:
+        case CellConstant::K10:
             K_val = 3;
         default:
             break;
@@ -543,10 +551,13 @@ void set_K(CellConstant K) {
 
     // Serial.write(MSG_START_BITS + {13} + {K_val} + {0, 0, 0, 0, 0, 0} + MSG_END_BITS);
     // todo: Trouble finding clean way to concat
-    Serial.write({100, 150, 13, K_val, 0, 0, 0, 0, 0, 0, 200});
 
+    uint8_t msg[MSG_SIZE_EC] = {100, 150, 13, K_val, 0, 0, 0, 0, 0, 0, 200};
+    Serial.write(msg, MSG_SIZE_EC);
+
+    uint8_t response[3];
     if (Serial.available() > 0) {
-        uint8_t response[MSG_SIZE_EC] = Serial.read();
+        Serial.readBytes(response, 3);
         if (response == ERROR_MSG || response != SUCCESS_MSG) {
             Serial.write("Error setting cell constant");
             return;
