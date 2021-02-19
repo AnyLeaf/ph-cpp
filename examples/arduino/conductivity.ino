@@ -1,15 +1,15 @@
 #include <Anyleaf.h>
 
-EcSensor ec_sensor;
+EcSensor ecSensor;
 
 void setup(void) {
     Serial.begin(9600);
 
-    ec_sensor = EcSensor();
+    ecSensor = EcSensor();
 }
 
 void loop(void) {
-    Serial.print("conductivity: "); Serial.println(ec_sensor.read());
+    Serial.print("conductivity: "); Serial.println(ecSensor.read());
 
     delay(1000);
 }
