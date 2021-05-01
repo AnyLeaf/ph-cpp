@@ -7,7 +7,7 @@
 #include "WProgram.h"
 #endif
 
-#include <Adafruit_ADS1015.h>
+#include <Adafruit_ADS1X15.h>
 #include <SimpleKalmanFilter.h>
 #include <Adafruit_MAX31865.h>
 // #include <tuple>
@@ -116,6 +116,7 @@ enum class ExcMode {
 
 class EcSensor {
 public:
+    EcSensor();
     EcSensor(float K_);
 
     CellConstant K;

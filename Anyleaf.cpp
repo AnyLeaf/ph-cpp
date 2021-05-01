@@ -8,7 +8,7 @@ Driver for the Anyleaf pH module
 #include "WProgram.h"
 #endif
 
-#include <Adafruit_ADS1015.h>
+#include <Adafruit_ADS1x15.h>
 #include <SimpleKalmanFilter.h>
 #include <Adafruit_MAX31865.h>
 #include "Anyleaf.h"
@@ -80,19 +80,19 @@ static const float q_orp = .005;
 PhSensor::PhSensor():
     filter(e_mea, e_est, q)
 {
-    Adafruit_ADS1115 ads1115(0x48); 
-    ads1115.setGain(GAIN_TWO);
-    ads1115.begin();
+    Adafruit_ADS1115 ads;
+    ads.setGain(GAIN_TWO);
+    ads.begin();
 
     SimpleKalmanFilter kf = SimpleKalmanFilter(e_mea, e_est, q);
 
-    adc = ads1115;
-    filter = kf;
+    this->adc = ads;
+    this->filter = kf;
 
     last_meas = 7.;
-    cal_1 = CalPt(0., 7., 23.);
-    cal_2 = CalPt(0.17, 4., 23.);
-    cal_3 = CalPt(0., 0., 0.);  // There's got to be a better way
+    this->cal_1 = CalPt(0., 7., 23.);
+    this->cal_2 = CalPt(0.17, 4., 23.);
+    this->cal_3 = CalPt(0., 0., 0.);  // There's got to be a better way
     // cal_3 = nullptr;
 }
 
@@ -100,10 +100,10 @@ PhSensor::PhSensor():
 inline PhSensor PhSensor::new_alt_addr() {
     PhSensor result = PhSensor();
 
-    Adafruit_ADS1115 ads1115(0x49);
-    ads1115.setGain(GAIN_TWO);
-    ads1115.begin();
-    result.adc = ads1115;
+    Adafruit_ADS1115 ads;
+    ads.setGain(GAIN_TWO);
+    ads.begin(0x49);
+    result.adc = ads;
 
     return result;
 }
@@ -288,13 +288,13 @@ void PhSensor::reset_calibration() {
 OrpSensor::OrpSensor():
     filter(e_mea_orp, e_est_orp, q_orp)
 {
-    Adafruit_ADS1115 ads1115(0x48);
-    ads1115.setGain(GAIN_TWO);
-    ads1115.begin();
+    Adafruit_ADS1115 ads;
+    ads.setGain(GAIN_TWO);
+    ads.begin();
 
     SimpleKalmanFilter kf = SimpleKalmanFilter(e_mea_orp, e_est_orp, q_orp);
 
-    adc = ads1115;
+    this->adc = ads;
     filter = kf;
 
     last_meas = 0.;
@@ -305,10 +305,10 @@ OrpSensor::OrpSensor():
 inline OrpSensor OrpSensor::new_alt_addr() {
     OrpSensor result = OrpSensor();
 
-    Adafruit_ADS1115 ads1115(0x49);
-    ads1115.setGain(GAIN_TWO);
-    ads1115.begin();
-    result.adc = ads1115;
+    Adafruit_ADS1115 ads;
+    ads.setGain(GAIN_TWO);
+    ads.begin(0x49);
+    result.adc = ads;
 
     return result;
 }
@@ -364,12 +364,13 @@ void OrpSensor::reset_calibration() {
     this->cal = CalPtOrp(0.4, 400.);
 }
 
+// C++ requires an empty constructor; don't use this in practice.
 Rtd::Rtd() :
     sensor(10)
 {
     this->sensor = Adafruit_MAX31865(10);
     this->type = RtdType::Pt100;
-    this->wires  = RtdWires::Three;
+    this->wires = RtdWires::Three;
 }
 
 Rtd::Rtd(uint8_t cs, RtdType type_, RtdWires wires_) :
@@ -423,6 +424,12 @@ void Rtd::calibrate() {
     // todo
 }
 
+// C++ requires an empty constructor; don't use this in practice.
+EcSensor::EcSensor() {
+    this->K = CellConstant::K1_0;
+    this->excitation_mode = ExcMode::ReadingsOnly;
+}
+
 EcSensor::EcSensor(float K_) {
     Serial.begin(9600);  // Same baud as ec firmware.
     // todo: parity bit, number of stop bits, and flow control?
@@ -436,6 +443,9 @@ EcSensor::EcSensor(float K_) {
     } else if (K_ < 10.01) {
         this->K = CellConstant::K10;
     } else {}  // todo: How do we handle errors like this in C++?
+
+    // todo: Let user change Excitation mode.
+    this->excitation_mode = ExcMode::ReadingsOnly;
 }
 
 
