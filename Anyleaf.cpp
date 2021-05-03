@@ -28,8 +28,11 @@ const float PH_STD = 0.01;
 const float ORP_STD = 10;
 
 const uint8_t MSG_SIZE_EC = 11;
-const uint8_t ERROR_MSG[3] = {99, 99, 99};
+const uint8_t RESPONSE_SIZE_EC = 3;
 const uint8_t SUCCESS_MSG[3] = {50, 50, 50};
+const uint8_t ERROR_MSG[3] = {99, 99, 99};
+const uint8_t OK_BIT = 10;
+const uint8_t ERROR_BIT = 20;
 const uint8_t MSG_START_BITS[2] = {100, 150};
 const uint8_t MSG_END_BITS[1] = {200};
 
@@ -455,17 +458,14 @@ float EcSensor::read() {
     // todo: Trouble finding clean way to concat
     uint8_t msg[MSG_SIZE_EC] = {100, 150, 10, 0, 0, 0, 0, 0, 0, 0, 200};
     Serial.write(msg, MSG_SIZE_EC);
-    
 
-    uint8_t response[2];
-    if (Serial.available() > 0) {  // todo: Do we need/want the `> 0` part?
-        Serial.readBytes(response, 2);
-        if (response == ERROR_MSG) {
-            Serial.write("Error reading conductivity");
+    uint8_t response[RESPONSE_SIZE_EC];
+    if (Serial.available()) {
+        Serial.readBytes(response, RESPONSE_SIZE_EC);
+        if (response == ERROR_MSG || response[0] != OK_BIT) {
             return 0.;
         }
     } else {
-        Serial.write("Problem getting data");
         return 0.;
     }
 
@@ -483,7 +483,7 @@ float EcSensor::read() {
             break;
     }
 
-    uint16_t val = ((uint16_t)response[1] << 8) | response[0];
+    uint16_t val = ((uint16_t)response[2] << 8) | response[1];
     return float(val) * K_val;  // µS/cm
     // todo: Calibration, temp compensation, and units
 }
@@ -495,19 +495,17 @@ float EcSensor::read_temp() {
     uint8_t msg[MSG_SIZE_EC] = {100, 150, 11, 0, 0, 0, 0, 0, 0, 0, 200};
     Serial.write(msg, MSG_SIZE_EC);
 
-    uint8_t response[2];
-    if (Serial.available() > 0) {
-        Serial.readBytes(response, MSG_SIZE_EC);
-        if (response == ERROR_MSG) {
-            Serial.write("Error reading temperature");
+    uint8_t response[RESPONSE_SIZE_EC];
+    if (Serial.available()) {
+        Serial.readBytes(response, RESPONSE_SIZE_EC);
+        if (response == ERROR_MSG || response[0] != OK_BIT) {
             return 0.;
         }
     } else {
-        Serial.write("Problem getting data");
         return 0.;
     }
 
-    uint16_t val = ((uint16_t)response[0] << 8) | response[1];
+    uint16_t val = ((uint16_t)response[2] << 8) | response[1];
     uint16_t V = temp_from_voltage(voltage_from_adc(val));  // Temp sensor output voltage
     return 100. * V - 60.;
 }
@@ -527,18 +525,15 @@ void set_excitation_mode(ExcMode mode) {
     // Serial.write(MSG_START_BITS + {12} + {mode_val} + {0, 0, 0, 0, 0, 0} + MSG_END_BITS);
     // todo: Trouble finding clean way to concat
     uint8_t msg[MSG_SIZE_EC] = {100, 150, 12, mode_val, 0, 0, 0, 0, 0, 0, 200};
-    Serial.write(msg, MSG_SIZE_EC);
-    
 
-    uint8_t response[3];
-    if (Serial.available() > 0) {
-        Serial.readBytes(response, 3);
+
+    uint8_t response[RESPONSE_SIZE_EC];
+    if (Serial.available()) {
+        Serial.readBytes(response, RESPONSE_SIZE_EC);
         if (response == ERROR_MSG || response != SUCCESS_MSG) {
-            Serial.write("Error setting excitation mode");
             return;
         }
     } else {
-        Serial.write("Problem getting data");
         return;
     }
 }
@@ -565,15 +560,13 @@ void set_K(CellConstant K) {
     uint8_t msg[MSG_SIZE_EC] = {100, 150, 13, K_val, 0, 0, 0, 0, 0, 0, 200};
     Serial.write(msg, MSG_SIZE_EC);
 
-    uint8_t response[3];
-    if (Serial.available() > 0) {
-        Serial.readBytes(response, 3);
+    uint8_t response[RESPONSE_SIZE_EC];
+    if (Serial.available()) {
+        Serial.readBytes(response, RESPONSE_SIZE_EC);
         if (response == ERROR_MSG || response != SUCCESS_MSG) {
-            Serial.write("Error setting cell constant");
             return;
         }
     } else {
-        Serial.write("Problem getting data");
         return;
     }
 }
