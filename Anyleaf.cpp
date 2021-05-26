@@ -1,14 +1,9 @@
 /*
-Driver for the Anyleaf pH module
+Driver for the Anyleaf pH/ORP, RTD, and EC modules
 */
 
-#if ARDUINO >= 100
 #include "Arduino.h"
-#else
-#include "WProgram.h"
-#endif
-
-#include <Adafruit_ADS1x15.h>
+#include <Wire.h>
 #include <SimpleKalmanFilter.h>
 #include <Adafruit_MAX31865.h>
 #include "Anyleaf.h"
@@ -35,6 +30,22 @@ const uint8_t OK_BIT = 10;
 const uint8_t ERROR_BIT = 20;
 const uint8_t MSG_START_BITS[2] = {100, 150};
 const uint8_t MSG_END_BITS[1] = {200};
+
+const uint8_t ADC_ADDR_1 = 0x48;
+const uint8_t ADC_ADDR_2 = 0x49;
+const uint8_t CFG_REG = 0x1;
+const uint8_t CONV_REG = 0x0;
+
+// See ads1115 datasheet Section 9.6.3: Config Register. Start a differential conversion on channels
+// 0 and 1, With 2.048V full scale range, one-shot mode, no alert pin activity.
+const uint16_t PH_ORP_CMD = 0b1000_0101_1000_0000;
+// Same as `PH_ORP_CM`, but with channel A2.
+const uint16_t T_CMD = 0b1110_0101_1000_0000;
+// Start a differential conversion on channel
+// 0, with 0.512V full scale range, one-shot mode, no alert pin activity.
+const uint16_t T_CMD = 0b1100_1001_1000_0000;
+// Same as EC command, but on channel 1. // todo: Higher voltage range?
+const uint16_t T_EC_CMD = 0b1100_1001_1000_0000;
 
 
 // A workaround for not having access to tuples.
@@ -83,13 +94,14 @@ static const float q_orp = .005;
 PhSensor::PhSensor():
     filter(e_mea, e_est, q)
 {
-    Adafruit_ADS1115 ads;
+    Wire wire;
     ads.setGain(GAIN_TWO);
-    ads.begin();
+    wire.begin(ADC_ADDR_1);
 
     SimpleKalmanFilter kf = SimpleKalmanFilter(e_mea, e_est, q);
 
-    this->adc = ads;
+    this->addr = ADC_ADDR_1;
+    this->i2c = wire;
     this->filter = kf;
 
     last_meas = 7.;
@@ -103,10 +115,10 @@ PhSensor::PhSensor():
 inline PhSensor PhSensor::new_alt_addr() {
     PhSensor result = PhSensor();
 
-    Adafruit_ADS1115 ads;
-    ads.setGain(GAIN_TWO);
-    ads.begin(0x49);
-    result.adc = ads;
+    Wire wire;
+    wire.begin(ADC_ADDR_2);
+    result.addr = ADC_ADDR_2;
+    result.i2c = wire;
 
     return result;
 }
@@ -158,12 +170,12 @@ float PhSensor::read(float t) {
 
 // Take a pH reading, without using the Kalman filter
 float PhSensor::read_raw() {
-    float T = temp_from_voltage(voltage_from_adc(this->adc.readADC_SingleEnded(2)));
+    float T = temp_from_voltage(voltage_from_adc(take_reading(this->addr, T_CMD, this->i2c)));
     if (abs(this->cal_3.V) <= 0.01 && abs(this->cal_3.pH) <= 0.01 && abs(this->cal_3.T) <= 0.01) {  // So janky.
 
     //if (cal_3) == nullptr {
         float pH = ph_from_voltage(
-            voltage_from_adc(this->adc.readADC_Differential_0_1()),
+            voltage_from_adc(take_reading(this->addr, PH_ORP_CMD, this->i2c)),
             T,
             cal_1,
             cal_2
@@ -175,7 +187,7 @@ float PhSensor::read_raw() {
     }
     else {
         float pH = ph_from_voltage(
-            voltage_from_adc(this->adc.readADC_Differential_0_1()),
+            voltage_from_adc(take_reading(this->addr, PH_ORP_CMD, this->i2c)),
             T,
             cal_1,
             cal_2,
@@ -195,7 +207,7 @@ float PhSensor::read_raw(float t) {
 
     //if (cal_3) == nullptr {
         float pH = ph_from_voltage(
-            voltage_from_adc(this->adc.readADC_Differential_0_1()),
+            voltage_from_adc(take_reading(this->addr, PH_ORP_CMD, this->i2c)),
             T,
             cal_1,
             cal_2
@@ -207,7 +219,7 @@ float PhSensor::read_raw(float t) {
     }
     else {
         float pH = ph_from_voltage(
-            voltage_from_adc(this->adc.readADC_Differential_0_1()),
+            voltage_from_adc(take_reading(this->addr, PH_ORP_CMD, this->i2c)),
             T,
             cal_1,
             cal_2,
@@ -222,19 +234,19 @@ float PhSensor::read_raw(float t) {
 
 // Useful for getting calibration data
 float PhSensor::read_voltage() {
-    return voltage_from_adc(this->adc.readADC_Differential_0_1());
+    return voltage_from_adc(take_reading(this->addr, PH_ORP_CMD, this->i2c));
 }
 
 // Useful for getting calibration data
 float PhSensor::read_temp() {
-    return temp_from_voltage(voltage_from_adc(this->adc.readADC_SingleEnded(2)));
+    return temp_from_voltage(voltage_from_adctake_reading(this->addr, T_CMD, this->i2c)));
 }
 
 // Calibrate by measuring voltage and temp at a given pH. Set the
 // calibration, and return (Voltage, Temp).
 Twople PhSensor::calibrate(CalSlot slot, float pH) {
-    float T = temp_from_voltage(voltage_from_adc(this->adc.readADC_SingleEnded(2)));
-    float V = voltage_from_adc(this->adc.readADC_Differential_0_1());
+    float T = temp_from_voltage(voltage_from_adc(take_reading(this->addr, T_CMD, this->i2c)));
+    float V = voltage_from_adc(take_reading(this->addr, PH_ORP_CMD, this->i2c));
     CalPt pt = CalPt(V, pH, T);
 
     switch (slot) {
@@ -254,7 +266,7 @@ Twople PhSensor::calibrate(CalSlot slot, float pH) {
 // todo: DRY with overloadee
 Twople PhSensor::calibrate(CalSlot slot, float pH, float t) {
     float T = t;
-    float V = voltage_from_adc(this->adc.readADC_Differential_0_1());
+    float V = voltage_from_adc(take_reading(this->addr, PH_ORP_CMD, this->i2c));
     CalPt pt = CalPt(V, pH, T);
 
     switch (slot) {
@@ -291,13 +303,13 @@ void PhSensor::reset_calibration() {
 OrpSensor::OrpSensor():
     filter(e_mea_orp, e_est_orp, q_orp)
 {
-    Adafruit_ADS1115 ads;
-    ads.setGain(GAIN_TWO);
-    ads.begin();
+    Wire wire;
+    wire.begin(ADC_ADDR_1);
 
     SimpleKalmanFilter kf = SimpleKalmanFilter(e_mea_orp, e_est_orp, q_orp);
 
-    this->adc = ads;
+    this->addr = ADC_ADDR_1;
+    this->i2c = wire;
     filter = kf;
 
     last_meas = 0.;
@@ -308,10 +320,10 @@ OrpSensor::OrpSensor():
 inline OrpSensor OrpSensor::new_alt_addr() {
     OrpSensor result = OrpSensor();
 
-    Adafruit_ADS1115 ads;
-    ads.setGain(GAIN_TWO);
-    ads.begin(0x49);
-    result.adc = ads;
+    Wire wire;
+    wire.begin(ADC_ADDR_2);
+    result.addr = ADC_ADDR_2;
+    result.i2c = wire;
 
     return result;
 }
@@ -331,7 +343,7 @@ float OrpSensor::read() {
 // Take an ORP reading, without using the Kalman filter
 float OrpSensor::read_raw() {
     float ORP = orp_from_voltage(
-        voltage_from_adc(this->adc.readADC_Differential_0_1()),
+        voltage_from_adc(take_reading(this->addr, PH_ORP_CMD, this->i2c)),
         this->cal
     );
 
@@ -342,18 +354,18 @@ float OrpSensor::read_raw() {
 
 // Useful for getting calibration data
 float OrpSensor::read_voltage() {
-    return voltage_from_adc(this->adc.readADC_Differential_0_1());
+    return voltage_from_adc(take_reading(this->addr, PH_ORP_CMD, this->i2c));
 }
 
 // Useful for getting calibration data
 float OrpSensor::read_temp() {
-    return temp_from_voltage(voltage_from_adc(this->adc.readADC_SingleEnded(2)));
+    return temp_from_voltage(voltage_from_adc(take_reading(this->addr, T_CMD, this->i2c)));
 }
 
 // Calibrate by measuring voltage and temp at a given ORP. Set the
 // calibration, and return Voltage.
 float OrpSensor::calibrate(float ORP) {
-    float V = voltage_from_adc(this->adc.readADC_Differential_0_1());
+    float V = voltage_from_adc(take_reading(this->addr, PH_ORP_CMD, this->i2c));
     this->cal = CalPtOrp(V, ORP);
 
     return V;
@@ -685,4 +697,9 @@ float orp_from_voltage(float V, CalPtOrp cal) {
 // Instruments-TI-LM61BIM3-NOPB_C132073.pdf
 float temp_from_voltage(float V) {
     return 100. * V - 60.;
+}
+
+// Take a measurement from the ADC, using the I2C connection.
+uint16_t take_reading(uint8_t addr, uint16_t cmd, Wire i2c) {
+
 }

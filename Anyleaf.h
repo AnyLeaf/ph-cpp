@@ -1,13 +1,9 @@
 #ifndef __ANYLEAF_H__
 #define __ANYLEAF_H__
 
-#if ARDUINO >= 100
-#include "Arduino.h"
-#else
-#include "WProgram.h"
-#endif
 
-#include <Adafruit_ADS1X15.h>
+#include "Arduino.h"
+#include <Wire.h>
 #include <SimpleKalmanFilter.h>
 #include <Adafruit_MAX31865.h>
 // #include <tuple>
@@ -76,7 +72,8 @@ public:
     void reset_calibration();
 
 private:
-    Adafruit_ADS1115 adc;
+    addr: uint8_t;
+    Wire i2c;
     float last_meas;
     CalPt cal_1;
     CalPt cal_2;
@@ -97,7 +94,8 @@ public:
     void reset_calibration();
 
 private:
-    Adafruit_ADS1115 adc;
+    addr: uint8_t;
+    Wire wire;
     float last_meas;
     CalPtOrp cal;
 };
@@ -127,6 +125,7 @@ public:
     void set_K(CellConstant K);
 
 private:
+    Wire wire;
 //    Serial ser; // todo maybe
 //    CalPtEc cal; // todo
 };
