@@ -1,11 +1,10 @@
 #ifndef __ANYLEAF_H__
 #define __ANYLEAF_H__
 
-
 #include "Arduino.h"
-#include <Wire.h>
-#include <SimpleKalmanFilter.h>
 #include <Adafruit_MAX31865.h>
+#include <SimpleKalmanFilter.h>
+#include <Wire.h>
 // #include <tuple>
 // #include "optional.hpp"
 // using nonstd::nullopt;
@@ -72,8 +71,7 @@ public:
     void reset_calibration();
 
 private:
-    addr: uint8_t;
-    Wire i2c;
+    uint8_t addr;
     float last_meas;
     CalPt cal_1;
     CalPt cal_2;
@@ -94,8 +92,7 @@ public:
     void reset_calibration();
 
 private:
-    addr: uint8_t;
-    Wire wire;
+    uint8_t addr;
     float last_meas;
     CalPtOrp cal;
 };
@@ -125,7 +122,6 @@ public:
     void set_K(CellConstant K);
 
 private:
-    Wire wire;
 //    Serial ser; // todo maybe
 //    CalPtEc cal; // todo
 };
@@ -165,4 +161,6 @@ float orp_from_voltage(float V, CalPtOrp cal);
 // todo: No `optional` support on Arduino
 // float ph_from_voltage(float V, float temp, CalPt cal_0, CalPt cal_1, optional<CapPt> cal_2)
 float temp_from_voltage(float V);
+uint16_t take_reading(uint8_t addr, uint16_t cmd);
+
 #endif
