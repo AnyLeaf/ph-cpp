@@ -9,7 +9,7 @@ void setup(void) {
 
     // If you connect multiple AnyLeaf modules on the same I²C bus, set one's
     // jumper to the `0x49` position, and specify this as below:
-    // ph_sensor = PhSensor.new_alt_addr();
+    // phSensor = PhSensor::new_alt_addr();
 
     // If you're using an ORP sensor:
     // orpSensor = OrpSensor();
