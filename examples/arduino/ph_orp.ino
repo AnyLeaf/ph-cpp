@@ -1,6 +1,7 @@
 #include <Anyleaf.h>
 
 PhSensor phSensor;
+// OrpSensor orpSensor;
 
 void setup(void) {
     Serial.begin(9600);
@@ -9,16 +10,18 @@ void setup(void) {
 
     // If you connect multiple AnyLeaf modules on the same I²C bus, set one's
     // jumper to the `0x49` position, and specify this as below:
-    // phSensor = PhSensor::new_alt_addr();
+    // PhSensor phSensor = PhSensor::new_alt_addr();
 
     // If you're using an ORP sensor:
     // orpSensor = OrpSensor();
+    // Or:
+    // OrpSensor orpSensor = OrpSensor::new_alt_addr();
 
-    // 2 or 3 pt calibration both give acceptable results.ca
+    // 2 or 3 point calibration both give acceptable results.
     // Calibrate with known values. (voltage, pH, temp in °C).
     // You can find voltage and temperature with `ph_sensor.read_voltage()` and
     // `ph_sensor.read_temp()` respectively.
-    // For 3 pt calibration, pass a third argument to `calibrate_all`.
+    // For 3 point calibration, pass a third argument to `calibrate_all`.
 
     // `calibrate_all` stores 2 or 3 calibration values, from known previous values.
     // The first value is measured voltage; the second is nominal pH; the third is temperature
@@ -27,7 +30,7 @@ void setup(void) {
         CalPt(0., 7., 25.), CalPt(0.17, 4., 25.)
     );
 
-    // Or, call `calibrate `with the sensor in the appropriate buffer solution.
+    // Or, call `calibrate` with the sensor in the appropriate buffer solution.
     // This will automatically use voltage and temperature.
     // Voltage and Temp are returned, but calibration occurs
     // without using the return values:
