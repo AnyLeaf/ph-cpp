@@ -109,7 +109,7 @@ PhSensor::PhSensor():
 }
 
 // Create a new sensor with an ADC I2C address of 0x49.
-inline PhSensor PhSensor::new_alt_addr() {
+PhSensor PhSensor::new_alt_addr() {
     PhSensor result = PhSensor();
 
     Wire.begin(ADC_ADDR_2);
@@ -310,7 +310,7 @@ OrpSensor::OrpSensor():
 }
 
 // Create a new sensor with an ADC I2C address of 0x49.
-inline OrpSensor OrpSensor::new_alt_addr() {
+OrpSensor OrpSensor::new_alt_addr() {
     OrpSensor result = OrpSensor();
 
     Wire.begin(ADC_ADDR_2);
